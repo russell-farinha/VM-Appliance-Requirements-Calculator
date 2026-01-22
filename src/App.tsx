@@ -1,14 +1,21 @@
 import { useState } from 'react'
 
+const PRESET_MULTIPLIERS = [50, 60, 70] as const
+
 function App() {
   const [assets, setAssets] = useState<number | ''>('')
   const [retentionDays, setRetentionDays] = useState<number | ''>('')
+  const [multiplierMode, setMultiplierMode] = useState<'preset' | 'custom'>('preset')
+  const [selectedPreset, setSelectedPreset] = useState<number>(60)
+  const [customMultiplier, setCustomMultiplier] = useState<number | ''>('')
+
+  const multiplier = multiplierMode === 'preset' ? selectedPreset : (typeof customMultiplier === 'number' ? customMultiplier : 0)
 
   // Calculations
-  const volume = typeof assets === 'number' ? assets * 60 : 0 // in MB
+  const volume = typeof assets === 'number' ? assets * multiplier : 0 // in MB
   const volumeGB = volume / 1024 // convert to GB for display
 
-  const hasValidInputs = typeof assets === 'number' && typeof retentionDays === 'number' && assets > 0 && retentionDays > 0
+  const hasValidInputs = typeof assets === 'number' && typeof retentionDays === 'number' && assets > 0 && retentionDays > 0 && multiplier > 0
 
   // VM Requirements
   const dataAnalyzerWorkers = hasValidInputs ? Math.ceil(volumeGB / 300) : 0
@@ -29,7 +36,7 @@ function App() {
         {/* Input Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">Inputs</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
                 Number of Assets
@@ -57,10 +64,59 @@ function App() {
               />
             </div>
           </div>
+
+          {/* Multiplier Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">
+              Volume per Asset (MB)
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              {PRESET_MULTIPLIERS.map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => {
+                    setMultiplierMode('preset')
+                    setSelectedPreset(preset)
+                  }}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    multiplierMode === 'preset' && selectedPreset === preset
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {preset} MB{preset === 60 && ' (Default)'}
+                </button>
+              ))}
+              <button
+                onClick={() => setMultiplierMode('custom')}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                  multiplierMode === 'custom'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Custom
+              </button>
+              {multiplierMode === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={customMultiplier}
+                    onChange={(e) => setCustomMultiplier(e.target.value ? Number(e.target.value) : '')}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Value"
+                    autoFocus
+                  />
+                  <span className="text-gray-500 text-sm">MB</span>
+                </div>
+              )}
+            </div>
+          </div>
           {hasValidInputs && (
             <div className="mt-4 p-3 bg-blue-50 rounded-md">
               <p className="text-sm text-blue-700">
-                <span className="font-medium">Calculated Volume:</span> {volume.toLocaleString()} MB ({volumeGB.toFixed(2)} GB)
+                <span className="font-medium">Calculated Volume:</span> {assets.toLocaleString()} assets × {multiplier} MB = {volume.toLocaleString()} MB ({volumeGB.toFixed(2)} GB)
               </p>
             </div>
           )}
